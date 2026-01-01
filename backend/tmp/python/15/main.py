@@ -1,0 +1,1 @@
+x=input();while true :;    print(x)
