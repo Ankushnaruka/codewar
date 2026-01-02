@@ -4,4 +4,4 @@ backend/node_modules
 tmp/
 
 #ignore the test tocker dir. too
-test-tocker/
+test_docker/
