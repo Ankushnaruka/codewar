@@ -1,6 +1,11 @@
 import express from "express";
 import { cppQueue , pythonQueue} from "./queue.js";
+import { QueueEvents } from "bullmq";
+import { connection } from "./queue.js";
 import { v4 as uuidv4 } from "uuid";
+
+const cppQueueEvents = new QueueEvents("cpp-jobs", { connection });
+const pythonQueueEvents = new QueueEvents("python-jobs", { connection });
 
 const app = express();
 app.use(express.json());
@@ -26,26 +31,24 @@ app.post("/run", async (req, res) => {
     });
   }
   
-  res.json({ jobId: job.id , language: language});
-});
-app.get("/:lang/job/:id", async (req, res) => {
-  let { lang, id } = req.params;
-  let job;
-  if (lang === "cpp") {
-    job = await cppQueue.getJob(id);
-  }
-  else if (lang === "python") {
-    job = await pythonQueue.getJob(id);
-  }
-  if (!job) {
-    return res.status(404).json({ error: "Job not found" });
-  }
-
-  const state = await job.getState();
-  if (state === "completed") {
-    res.json({ state, output: job.returnvalue });
-  } else {
-    res.json({ state, output: job.returnvalue || null });
+  // Wait for the job to complete
+  try {
+    const queueEvents = language === "cpp" ? cppQueueEvents : pythonQueueEvents;
+    const result = await job.waitUntilFinished(queueEvents);
+    res.json({ 
+      state: "completed", 
+      output: result.output, 
+      executionTime: result.executionTime + "ms",
+      jobId: job.id, 
+      language: language 
+    });
+    
+    // Delete the job after completion to save memory
+    await job.remove();
+  } catch (error) {
+    // Delete the job even if it failed
+    await job.remove();
+    res.status(500).json({ error: "Job failed or was cancelled", details: error.message });
   }
 });
 

@@ -7,6 +7,7 @@ import { connection } from "./queue.js";
 new Worker(
   "cpp-jobs",
   async job => {
+    console.log("Processing C++ job:", job.id);
     const { code, input } = job.data;
 
     const jobDir = path.join("tmp","cpp" ,job.id.toString());
@@ -27,7 +28,12 @@ new Worker(
       "utf-8"
     );
 
-    return output;
+    const executionTime = fs.readFileSync(
+      path.join(jobDir, "time.txt"),
+      "utf-8"
+    ).trim();
+
+    return { output, executionTime };
   },
   { connection }
 );
@@ -35,6 +41,7 @@ new Worker(
 new Worker(
   "python-jobs",
   async job => {
+    console.log("Processing Python job:", job.id);
     const { code, input } = job.data;
     const jobDir = path.join("tmp","python", job.id.toString());
     fs.mkdirSync(jobDir, { recursive: true });
@@ -49,7 +56,13 @@ new Worker(
       path.join(jobDir, "output.txt"),
       "utf-8"
     );
-    return output;
+
+    const executionTime = fs.readFileSync(
+      path.join(jobDir, "time.txt"),
+      "utf-8"
+    ).trim();
+
+    return { output, executionTime };
   }
   , { connection }
 );

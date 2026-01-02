@@ -1,1 +1,7 @@
 backend/node_modules
+
+#ignore everything in temp folders
+tmp/
+
+#ignore the test tocker dir. too
+test-tocker/
