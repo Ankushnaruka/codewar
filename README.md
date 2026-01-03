@@ -1,244 +1,328 @@
 # CodeWar - Code Execution Backend
 
-A Node.js-based code execution service that supports C++ and Python code compilation and execution using Docker containers and job queuing with Redis.
+A professional Node.js-based code execution service that supports C++ and Python code compilation and execution using Docker containers and job queuing with Redis.
 
 ## Overview
 
-This project provides a REST API backend that accepts code snippets in C++ or Python, executes them in isolated Docker containers, and returns the execution results. It uses **BullMQ** for job queuing and **Redis** as the message broker.
+This project provides a robust REST API backend that accepts code snippets in C++ or Python, executes them in isolated Docker containers, and returns the execution results. It uses **BullMQ** for job queuing and **Redis** as the message broker, with comprehensive logging and professional code organization.
 
 ## Tech Stack
 
 - **Express.js** - REST API framework
-- **BullMQ** - Job queue management
+- **BullMQ** - Distributed job queue management
 - **Redis** - Message broker and data store
 - **Docker** - Container runtime for code execution
-- **Node.js** - Runtime environment (type: module)
+- **Node.js** - Runtime environment (v18+, ES modules)
+- **ESLint** - Code quality and style enforcement
 
 ## Project Structure
 
 ```
 backend/
-├── app.js                    # Express server and API routes
-├── queue.js                  # BullMQ queue configuration
-├── worker.js                 # Job worker for processing code execution
-├── docker-compose.yml        # Docker Compose configuration for Redis
-├── package.json              # Project dependencies
+├── src/
+│   ├── server.js                    # Application entry point
+│   ├── app.js                       # Express app setup
+│   ├── config/
+│   │   ├── index.js                 # Centralized configuration
+│   │   ├── queue.js                 # BullMQ queue setup
+│   │   └── redis.js                 # Redis connection config
+│   ├── routes/
+│   │   └── execution.js             # Code execution endpoints
+│   ├── workers/
+│   │   ├── cpp.js                   # C++ code execution worker
+│   │   └── python.js                # Python code execution worker
+│   ├── middleware/
+│   │   └── rateLimiter.js           # Rate limiting middleware
+│   ├── utils/
+│   │   ├── logger.js                # Logging utility
+│   │   └── jobExecutor.js           # Job execution logic
+│   └── constants/
+│       └── index.js                 # Application constants
+├── tests/                           # Unit and integration tests
 ├── docker/
 │   ├── cpp/
-│   │   ├── dockerfile       # C++ compilation and execution environment
-│   │   └── run.sh           # C++ code execution script
+│   │   ├── dockerfile               # C++ execution environment
+│   │   └── run.sh                   # C++ execution script
 │   └── python/
-│       ├── dockerfile       # Python execution environment
-│       └── run.sh           # Python code execution script
-├── test_docker/             # Docker testing files
-└── tmp/                      # Temporary storage for job files
-    └── python/
-        └── 15/              # Sample execution output
+│       ├── dockerfile               # Python execution environment
+│       └── run.sh                   # Python execution script
+├── .env                             # Environment variables (local)
+├── .env.example                     # Environment template
+├── .gitignore                       # Git ignore rules
+├── .eslintrc.json                   # ESLint configuration
+├── docker-compose.yml               # Redis container setup
+├── package.json                     # Project dependencies
+└── README.md                        # This file
 ```
 
-## Docker Setup
-
-### Docker Compose (Redis)
-
-The project uses Docker Compose to run a Redis container for message queuing:
-
-```yaml
-version: "3.8"
-
-services:
-  redis:
-    image: redis:7
-    container_name: redis
-    ports:
-      - "6379:6379"
-    restart: unless-stopped
-```
-
-**To start Redis:**
-```bash
-cd backend
-docker-compose up -d
-```
-
-### C++ Execution Container
-
-**Dockerfile** (`backend/docker/cpp/dockerfile`)
-- Base Image: `gcc:13` (includes g++ compiler)
-- Executes C++ code by compiling and running it
-- Mounted with code files at runtime
-- Script: `run.sh` handles compilation and execution
-
-**Usage:** Dynamically created when C++ code is submitted
-
-### Python Execution Container
-
-**Dockerfile** (`backend/docker/python/dockerfile`)
-- Base Image: `python:3.14.0` (Python 3.14)
-- Executes Python scripts
-- Mounted with code files at runtime
-- Script: `run.sh` handles execution
-
-**Usage:** Dynamically created when Python code is submitted
-
-## API Routes
-
-### 1. **POST `/run`**
-
-Submit code for execution.
-
-**Request Body:**
-```json
-{
-  "code": "string",        // Source code to execute
-  "input": "string",       // Standard input for the program
-  "language": "cpp|python" // Programming language
-}
-```
-
-**Example (C++):**
-```bash
-curl -X POST http://localhost:3000/run \
-  -H "Content-Type: application/json" \
-  -d '{
-    "code": "#include <iostream>\nint main() { std::cout << \"Hello\"; return 0; }",
-    "input": "",
-    "language": "cpp"
-  }'
-```
-
-**Example (Python):**
-```bash
-curl -X POST http://localhost:3000/run \
-  -H "Content-Type: application/json" \
-  -d '{
-    "code": "print(\"Hello\")",
-    "input": "",
-    "language": "python"
-  }'
-```
-
-**Response:**
-```json
-{
-  "jobId": "550e8400-e29b-41d4-a716-446655440000",
-  "language": "cpp"
-}
-```
-
-### 2. **GET `/:lang/job/:id`**
-
-Retrieve the execution status and result of a submitted job.
-
-**Parameters:**
-- `lang` - Programming language (`cpp` or `python`)
-- `id` - Job ID from the `/run` response
-
-**Example:**
-```bash
-curl http://localhost:3000/cpp/job/550e8400-e29b-41d4-a716-446655440000
-```
-
-**Response (Pending):**
-```json
-{
-  "state": "active",
-  "output": null
-}
-```
-
-**Response (Completed):**
-```json
-{
-  "state": "completed",
-  "output": "Hello\n"
-}
-```
-
-**Possible States:**
-- `waiting` - Job is queued
-- `active` - Job is being processed
-- `completed` - Job finished execution
-- `failed` - Job encountered an error
-
-## Installation & Setup
+## Quick Start
 
 ### Prerequisites
-- Node.js (v18+)
-- Docker and Docker Compose
-- Redis (via Docker Compose)
+- Node.js 18+
+- Docker & Docker Compose
+- npm or yarn
 
-### Steps
+### Installation
 
-1. **Clone the repository:**
-```bash
-git clone <repo-url>
-cd codewar
-```
-
-2. **Install dependencies:**
+1. **Install dependencies:**
 ```bash
 cd backend
 npm install
 ```
 
-3. **Start Redis:**
+2. **Start Redis container:**
 ```bash
 docker-compose up -d
 ```
 
-4. **Start the server:**
+3. **Start the server:**
 ```bash
-node app.js
+npm run dev          # Development mode with hot reload
+# or
+npm start            # Production mode
 ```
 
-The server will start on `http://localhost:3000`
+Server starts on `http://localhost:3000`
 
-## Environment Variables
+## Configuration
 
-Currently, the application uses hardcoded values:
-- Redis Connection: `localhost:6379`
-- Server Port: `3000`
+Environment variables are managed through `.env` file:
 
-You can modify these in `app.js` and `queue.js` as needed.
+```env
+NODE_ENV=development
+PORT=3000
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+TMP_DIR=tmp
+DEBUG=false
+```
 
-## Job Queue Flow
+Copy `.env.example` to `.env` and customize as needed.
 
-1. **Client submits code** → POST `/run`
-2. **Job created** → Added to BullMQ queue (C++ or Python)
-3. **Worker processes** → Retrieves job from queue
-4. **Docker execution** → Runs code in isolated container
-5. **Result stored** → Job result available in queue
-6. **Client retrieves** → GET `/:lang/job/:id`
+## API Documentation
+
+### POST `/run` - Execute Code
+
+Submit code for execution in the specified language.
+
+**Rate Limit:** 6 requests per minute per IP
+
+**Request Body:**
+```json
+{
+  "code": "string",              // Source code (required)
+  "input": "string",             // Standard input (optional)
+  "language": "cpp" | "python"   // Language (required)
+}
+```
+
+**C++ Example:**
+```bash
+curl -X POST http://localhost:3000/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "#include <iostream>\nint main() { std::cout << \"Hello World\"; return 0; }",
+    "input": "",
+    "language": "cpp"
+  }'
+```
+
+**Python Example:**
+```bash
+curl -X POST http://localhost:3000/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "print(\"Hello World\")",
+    "input": "",
+    "language": "python"
+  }'
+```
+
+**Success Response (200):**
+```json
+{
+  "state": "completed",
+  "output": "Hello World\n",
+  "executionTime": "45ms",
+  "jobId": "550e8400-e29b-41d4-a716-446655440000",
+  "language": "cpp"
+}
+```
+
+**Error Response (400):**
+```json
+{
+  "error": "Missing required fields: code, language"
+}
+```
+
+**Error Response (500):**
+```json
+{
+  "error": "Job failed or was cancelled",
+  "details": "Compilation error: ..."
+}
+```
+
+### GET `/health` - Health Check
+
+Check if the server is running.
+
+**Response (200):**
+```json
+{
+  "status": "ok"
+}
+```
+
+## Docker Setup
+
+### Redis (via Docker Compose)
+
+```bash
+# Start Redis
+docker-compose up -d
+
+# View logs
+docker-compose logs -f redis
+
+# Stop Redis
+docker-compose down
+```
+
+### C++ Execution Container
+
+- **Base Image:** `gcc:13`
+- **Built at runtime** when C++ code is submitted
+- Includes g++ compiler and standard libraries
+- Isolated with resource limits (1 CPU, 256MB memory)
+
+### Python Execution Container
+
+- **Base Image:** `python:3.14.0`
+- **Built at runtime** when Python code is submitted
+- Includes Python interpreter and standard library
+- Isolated with resource limits (1 CPU, 256MB memory)
+
+## Scripts
+
+```bash
+# Development server with hot reload
+npm run dev
+
+# Production server
+npm start
+
+# Run linter
+npm run lint
+
+# Fix linting issues
+npm run lint:fix
+
+# Run tests
+npm test
+```
+
+## Job Execution Flow
+
+```
+Client Request
+    ↓
+POST /run endpoint
+    ↓
+Job ID generated (UUID)
+    ↓
+Job added to BullMQ queue
+    ↓
+Worker processes job
+    ↓
+Docker container created & code executed
+    ↓
+Output/errors captured
+    ↓
+Results stored in job
+    ↓
+Job cleanup
+    ↓
+Response returned to client
+```
+
+## Logging
+
+The application includes comprehensive logging with timestamps and severity levels:
+
+```javascript
+logger.info('Job completed', { jobId, executionTime });
+logger.error('Job failed', { error });
+logger.warn('Cleanup failed', { details });
+logger.debug('Processing step', { data });
+```
+
+Debug logging can be enabled via `DEBUG=true` environment variable.
+
+## Security Considerations
+
+✅ **Implemented:**
+- Rate limiting (6 requests/minute)
+- Isolated Docker containers
+- Resource limits (1 CPU, 256MB memory)
+- Network isolation (`--network none`)
+
+⚠️ **For Production:**
+- Add authentication/authorization
+- Implement request validation
+- Add timeout mechanisms for long-running code
+- Monitor and log security events
+- Use container security scanning
+- Implement audit logging
+- Set up monitoring and alerting
 
 ## Dependencies
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| `express` | ^5.2.1 | REST API framework |
-| `bullmq` | ^5.66.4 | Job queue management |
-| `ioredis` | ^5.8.2 | Redis client |
-| `uuid` | ^13.0.0 | Generate unique job IDs |
+| express | ^5.2.1 | REST API framework |
+| bullmq | ^5.66.4 | Job queue management |
+| ioredis | ^5.8.2 | Redis client |
+| uuid | ^13.0.0 | Generate unique IDs |
+| express-rate-limit | ^8.2.1 | Rate limiting middleware |
+| dotenv | ^16.3.1 | Environment variables |
+| eslint | ^8.54.0 | Code linting (dev) |
 
-## Error Handling
+## Troubleshooting
 
-- **Job not found (404):** Returns error when job ID doesn't exist
-- **Invalid language:** Only `cpp` and `python` are supported
-- **Compilation/Runtime errors:** Captured in job result with error messages
+**Connection refused to Redis**
+- Ensure `docker-compose up -d` has been run
+- Check Redis is running: `docker ps | grep redis`
+- Verify Redis port (6379) is not in use
 
-## Security Considerations
+**Docker command not found**
+- Verify Docker is installed and running
+- On Windows, ensure Docker Desktop is running
+- Check file paths use proper separators
 
-⚠️ **This project is for educational purposes.** For production use:
-- Implement input validation and sanitization
-- Add rate limiting
-- Add authentication/authorization
-- Isolate code execution in restricted environments
-- Implement timeout mechanisms for long-running code
-- Add resource limits (memory, CPU)
+**Rate limit exceeded**
+- Current limit: 6 requests per minute per IP
+- Wait 60 seconds before retrying
+- Modify `RATE_LIMIT` in `src/constants/index.js` to adjust
+
+**Compilation/Runtime errors**
+- Check code syntax in the error response
+- Ensure input data matches program requirements
+- View Docker logs for detailed error messages
 
 ## Contributing
 
-Feel free to submit issues and enhancement requests!
+Contributions welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Follow ESLint rules (`npm run lint`)
+4. Submit a pull request
 
 ## License
 
-ISC
+MIT
+
+## Support
+
+For issues and questions, please open an issue on the repository.
