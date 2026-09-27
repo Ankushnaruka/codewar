@@ -19,7 +19,8 @@ import { LANGUAGES, DOCKER_LIMITS, FILE_NAMES } from '../constants/index.js';
  * @returns {Promise<{output: string, executionTime: string}>}
  */
 export const executeJob = async (jobId, code, input, language, tmpDir) => {
-  const jobDir = path.join(tmpDir, language, jobId.toString());
+  const absoluteTmpDir = path.resolve(tmpDir);
+  const jobDir = path.join(absoluteTmpDir, language, jobId.toString());
   
   try {
     // Create job directory
@@ -32,11 +33,12 @@ export const executeJob = async (jobId, code, input, language, tmpDir) => {
     // Write input
     fs.writeFileSync(path.join(jobDir, FILE_NAMES.INPUT), input || '');
     
-    logger.info(`Executing ${language} job`, { jobId });
+    logger.info('Executing ' + language + ' job', { jobId });
     
     // Execute in Docker
     const dockerImage = language === LANGUAGES.CPP ? 'cpp-runner' : 'python-runner';
-    const dockerCmd = `docker run --rm --cpus="${DOCKER_LIMITS.CPU}" --memory="${DOCKER_LIMITS.MEMORY}" --network none -v "${process.cwd()}\\${jobDir}:/app" ${dockerImage}`;
+    const containerPath = jobDir.replace(/\\/g, '/');
+    const dockerCmd = `docker run --rm --cpus="${DOCKER_LIMITS.CPU}" --memory="${DOCKER_LIMITS.MEMORY}" --pids-limit="${DOCKER_LIMITS.PIDS}" --network none -v "${containerPath}:/app" ${dockerImage}`;
     
     execSync(dockerCmd, { stdio: 'inherit' });
     
@@ -44,11 +46,11 @@ export const executeJob = async (jobId, code, input, language, tmpDir) => {
     const output = fs.readFileSync(path.join(jobDir, FILE_NAMES.OUTPUT), 'utf-8');
     const executionTime = fs.readFileSync(path.join(jobDir, FILE_NAMES.TIME), 'utf-8').trim();
     
-    logger.info(`Job completed successfully`, { jobId, executionTime });
+    logger.info('Job completed successfully', { jobId, executionTime });
     
     return { output, executionTime };
   } catch (error) {
-    logger.error(`Job execution failed`, { jobId, error: error.message });
+    logger.error('Job execution failed', { jobId, error: error.message });
     throw error;
   }
 };
@@ -61,12 +63,13 @@ export const executeJob = async (jobId, code, input, language, tmpDir) => {
  */
 export const cleanupJob = (jobId, language, tmpDir) => {
   try {
-    const jobDir = path.join(tmpDir, language, jobId.toString());
+    const absoluteTmpDir = path.resolve(tmpDir);
+    const jobDir = path.join(absoluteTmpDir, language, jobId.toString());
     if (fs.existsSync(jobDir)) {
       fs.rmSync(jobDir, { recursive: true, force: true });
-      logger.debug(`Cleaned up job directory`, { jobId });
+      logger.debug('Cleaned up job directory', { jobId });
     }
   } catch (error) {
-    logger.warn(`Failed to cleanup job directory`, { jobId, error: error.message });
+    logger.warn('Failed to cleanup job directory', { jobId, error: error.message });
   }
 };

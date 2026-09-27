@@ -19,7 +19,8 @@ export const QUEUE_JOB_TYPES = {
 
 export const DOCKER_LIMITS = {
   CPU: '1',
-  MEMORY: '256m'
+  MEMORY: '256m',
+  PIDS: 64
 };
 
 export const RATE_LIMIT = {

@@ -11,7 +11,7 @@ import pythonWorker from './workers/python.js';
 const PORT = config.port;
 
 // Start workers
-logger.info('Starting workers...');
+// logger.info('Starting workers...');
 
 // Start server
 const server = app.listen(PORT, () => {

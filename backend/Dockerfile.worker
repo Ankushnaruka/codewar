@@ -1,0 +1,14 @@
+FROM node:22-alpine
+
+# Install docker CLI
+RUN apk add --no-cache docker-cli
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install --production
+
+COPY src ./src
+COPY .env .env
+
+CMD ["node", "src/workers/index.js"]

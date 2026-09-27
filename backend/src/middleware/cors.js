@@ -1,4 +1,6 @@
-const cors = require('cors');
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const corsOptions = {
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
@@ -7,4 +9,4 @@ const corsOptions = {
   credentials: false, // set true ONLY if you use cookies
 };
 
-module.exports = cors(corsOptions);
+export default corsOptions;
